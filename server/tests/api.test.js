@@ -4,6 +4,7 @@ import http from 'node:http';
 import mongoose from 'mongoose';
 import app from '../server.js';
 import { validateStudentInput } from '../services/studentService.js';
+import { connectDB } from '../config/db.js';
 
 describe('Backend API & Validation Test Suite', () => {
   let server;
@@ -84,6 +85,8 @@ describe('Backend API & Validation Test Suite', () => {
       const data = await res.json();
       assert.ok(data.database !== undefined, 'Health check should report database status');
       assert.ok(data.timestamp !== undefined, 'Health check should include timestamp');
+      assert.ok(data.hasMongoUri !== undefined, 'Health check should report hasMongoUri boolean');
+      assert.ok(data.diagnostic !== undefined, 'Health check should report safe diagnostic info');
     });
 
     it('GET / responds with API greeting and endpoints info', async () => {
@@ -117,6 +120,19 @@ describe('Backend API & Validation Test Suite', () => {
         headers: { Origin: 'http://localhost:5173' },
       });
       assert.equal(res.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+    });
+  });
+
+  describe('Connection Concurrency Guard', () => {
+    it('concurrent calls to connectDB reuse the same in-flight connection promise', async () => {
+      const promise1 = connectDB();
+      const promise2 = connectDB();
+      const promise3 = connectDB();
+
+      assert.equal(promise1, promise2, 'Call 1 and Call 2 must share the identical Promise instance');
+      assert.equal(promise2, promise3, 'Call 2 and Call 3 must share the identical Promise instance');
+
+      await Promise.allSettled([promise1, promise2, promise3]);
     });
   });
 });

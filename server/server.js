@@ -1,11 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { connectDB } from './config/db.js';
 import studentRoutes from './routes/studentRoutes.js';
 
-import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// Load .env from current directory and server folder
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config();
 
 const app = express();
@@ -96,13 +101,17 @@ app.use((err, req, res, next) => {
 });
 
 // Initialize database and start listening only if executed directly
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 if (isMain) {
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`[Server] Server listening on port ${PORT}`);
-      console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
+  // Start server listening immediately so Render detects port binding
+  app.listen(PORT, () => {
+    console.log(`[Server] Server listening on port ${PORT}`);
+    console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  // Connect to MongoDB Atlas
+  connectDB().catch((err) => {
+    console.error('[Server DB Init Error]:', err.message);
   });
 }
 

@@ -6,19 +6,26 @@ import {
   updateStudent,
   deleteStudent,
 } from '../services/studentService.js';
-import { getDBStatus } from '../config/db.js';
+import { getDBDiagnostics, connectDB } from '../config/db.js';
 
 const router = express.Router();
 
 // GET /api/health
 router.get('/health', (req, res) => {
-  const dbStatus = getDBStatus();
-  const isHealthy = dbStatus === 'connected';
+  const diag = getDBDiagnostics();
+  const isHealthy = diag.database === 'connected';
+
+  // If disconnected, trigger a quick background reconnect attempt
+  if (!isHealthy && diag.hasMongoUri && diag.database === 'disconnected' && process.env.NODE_ENV !== 'test') {
+    connectDB().catch(() => {});
+  }
 
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
-    database: dbStatus,
+    database: diag.database,
+    hasMongoUri: diag.hasMongoUri,
+    diagnostic: diag.diagnostic,
     uptime: process.uptime(),
   });
 });
