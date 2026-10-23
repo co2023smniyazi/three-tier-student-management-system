@@ -1,7 +1,20 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+// Base API URL normalization:
+// Automatically ensures the path ends with '/api' whether VITE_API_BASE_URL is set as:
+// - https://<host>
+// - https://<host>/api
+// - https://<host>/api/
+// - or omitted (defaults to '/api')
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '/api').trim().replace(/\/+$/, '');
+const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
 
 const handleResponse = async (response) => {
-  const data = await response.json().catch(() => ({}));
+  const contentType = response.headers.get('content-type') || '';
+  let data = {};
+
+  if (contentType.includes('application/json')) {
+    data = await response.json().catch(() => ({}));
+  }
+
   if (!response.ok) {
     const errorMsg = data.message || `Request failed with status ${response.status}`;
     throw new Error(errorMsg);
