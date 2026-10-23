@@ -192,3 +192,4 @@ API_BASE_URL=https://<your-render-service>.onrender.com/api
 - **Database Disconnected:** Verify your IP address is whitelisted in MongoDB Atlas under Network Access (`0.0.0.0/0` for cloud deployment).
 - **CORS Error:** Ensure `FRONTEND_URL` on Render matches your Netlify domain.
 - **MCP Connection Refused:** Verify backend server is running and `API_BASE_URL` is reachable.
+
