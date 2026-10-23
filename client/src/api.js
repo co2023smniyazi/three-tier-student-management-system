@@ -1,10 +1,9 @@
 // Base API URL normalization:
-// Automatically ensures the path ends with '/api' whether VITE_API_BASE_URL is set as:
-// - https://<host>
-// - https://<host>/api
-// - https://<host>/api/
-// - or omitted (defaults to '/api')
-const rawBase = (import.meta.env.VITE_API_BASE_URL || '/api').trim().replace(/\/+$/, '');
+// Standardizes on VITE_API_BASE_URL, supporting VITE_API_URL as fallback, defaulting to '/api'.
+// In production on Netlify, '/api' is automatically proxied to the Render backend via netlify.toml.
+// Also ensures the path ends with '/api' whether the host was given with or without '/api'.
+const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api';
+const rawBase = envUrl.trim().replace(/\/+$/, '');
 const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
 
 const handleResponse = async (response) => {
