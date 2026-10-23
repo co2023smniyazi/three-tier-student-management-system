@@ -19,7 +19,7 @@ Node.js + Express Backend (Render)
 MongoDB Atlas (Database: studentDB, Collection: students)
       ▲
       │
-MCP Server (stdio transport for Claude Desktop / Cursor / Antigravity)
+MCP Server (stdio transport for Antigravity / Claude Desktop / Cursor)
 Accesses shared backend REST API / database service
 ```
 
@@ -31,6 +31,7 @@ Accesses shared backend REST API / database service
 - **MCP Server:** `@modelcontextprotocol/sdk`, Zod
 - **Testing:** Node.js native test runner (`node:test`, `node:assert`)
 - **Deployments:** Netlify (Frontend), Render (Backend)
+- **Repository:** Git + GitHub
 
 ## Features
 
@@ -45,6 +46,8 @@ Accesses shared backend REST API / database service
 ## Project Structure
 
 ```
+├── .agents/             # Antigravity agent configuration
+│   └── mcp_config.json  # Antigravity local MCP server config
 ├── client/              # React + Vite frontend
 │   ├── public/          # Static assets & _redirects (SPA routing)
 │   ├── src/             # React components, styles, and API client
@@ -63,6 +66,7 @@ Accesses shared backend REST API / database service
 │   ├── index.js         # MCP server with stdio transport & 5 tools
 │   ├── tests/           # MCP tool discovery & execution test suite
 │   └── package.json
+├── render.yaml          # Render Blueprint (Infrastructure-as-Code)
 ├── netlify.toml         # Netlify build configuration
 ├── package.json         # Workspace root scripts
 └── README.md
@@ -79,9 +83,13 @@ Accesses shared backend REST API / database service
 | `PUT` | `/api/students/:id` | Update existing student |
 | `DELETE` | `/api/students/:id` | Delete student |
 
-## MCP Server Tools
+---
 
-The MCP server connects AI clients to the student management system:
+## MCP Server Configuration & Usage
+
+The MCP server connects AI clients to the student management system using the official `@modelcontextprotocol/sdk`.
+
+### MCP Tools Implemented
 
 1. `list_students`: List all students with optional search query.
 2. `get_student`: Retrieve student record by ID or studentId.
@@ -89,16 +97,18 @@ The MCP server connects AI clients to the student management system:
 4. `update_student`: Update student details.
 5. `delete_student`: Remove student record.
 
-### MCP Client Configuration
+### Antigravity Configuration (Local)
 
-To connect this MCP server to Claude Desktop or compatible AI clients, add this to your `claude_desktop_config.json`:
+The MCP server is configured in `.agents/mcp_config.json` (workspace) and `~/.gemini/config/mcp_config.json` (global):
 
 ```json
 {
   "mcpServers": {
     "student-management": {
       "command": "node",
-      "args": ["d:/New folder/cc project 1/mcp-server/index.js"],
+      "args": [
+        "d:/New folder/cc project 1/mcp-server/index.js"
+      ],
       "env": {
         "API_BASE_URL": "http://localhost:5000/api"
       }
@@ -107,7 +117,51 @@ To connect this MCP server to Claude Desktop or compatible AI clients, add this 
 }
 ```
 
-*Note: Replace `API_BASE_URL` with your live Render backend URL when deployed.*
+*When the backend is deployed on Render, update `API_BASE_URL` to `https://<your-render-service>.onrender.com/api`.*
+
+### Claude Desktop Configuration
+
+Add this to `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "student-management": {
+      "command": "node",
+      "args": [
+        "d:/New folder/cc project 1/mcp-server/index.js"
+      ],
+      "env": {
+        "API_BASE_URL": "http://localhost:5000/api"
+      }
+    }
+  }
+}
+```
+
+### Running and Verifying MCP Server
+
+* **Run standalone test suite:**
+  ```bash
+  npm run test:mcp
+  ```
+  Verifies tool discovery (all 5 tools registered), input validation rejection, and representative execution.
+
+* **Start server manually:**
+  ```bash
+  npm run start:mcp
+  ```
+
+### Remote MCP Architecture Note
+
+Deploying MCP code to GitHub makes the code available in version control, but does **not** make the MCP server remotely accessible over the internet by itself. Remote MCP access requires:
+1. Hosting the MCP server on a containerized platform supporting persistent connections.
+2. Using the **Streamable HTTP** transport (spec 2025-03-26) over HTTPS rather than stdio.
+3. Implementing authentication (e.g., Bearer tokens or mTLS) to prevent unauthorized student record modifications.
+
+For local development and pairing with AI assistants (Antigravity, Claude Desktop, Cursor), the **stdio transport** connecting to the deployed Render backend API is the recommended, secure approach.
+
+---
 
 ## Environment Variables
 
@@ -129,12 +183,14 @@ VITE_API_BASE_URL=https://<your-render-service>.onrender.com/api
 API_BASE_URL=https://<your-render-service>.onrender.com/api
 ```
 
+---
+
 ## Local Setup & Development
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repo-url>
-   cd "cc project 1"
+   git clone https://github.com/co2023smniyazi/three-tier-student-management-system.git
+   cd three-tier-student-management-system
    ```
 
 2. **Install dependencies:**
@@ -149,47 +205,59 @@ API_BASE_URL=https://<your-render-service>.onrender.com/api
    - Copy `server/.env.example` to `server/.env` and supply your `MONGODB_URI`.
    - Copy `client/.env.example` to `client/.env`.
 
-4. **Run tests:**
+4. **Run all tests:**
    ```bash
    npm test
    ```
 
 5. **Start services:**
-   - Start backend: `npm run start:server`
-   - Start frontend: `npm run start:client`
-   - Start MCP server: `npm run start:mcp`
+   - Backend: `npm run start:server`
+   - Frontend: `npm run start:client`
+   - MCP Server: `npm run start:mcp`
+
+---
 
 ## Deployment Instructions
 
 ### 1. Backend on Render
-1. Create a **New Web Service** linked to your GitHub repository.
-2. Settings:
+1. Go to [Render Dashboard](https://dashboard.render.com/) → **New +** → **Web Service**.
+2. Connect your GitHub repository: `https://github.com/co2023smniyazi/three-tier-student-management-system`.
+3. Render will auto-detect settings from `render.yaml`, or configure manually:
    - **Root Directory:** `server`
+   - **Runtime:** `Node`
    - **Build Command:** `npm install`
    - **Start Command:** `node server.js`
-3. Environment Variables:
-   - `MONGODB_URI`: Your MongoDB Atlas connection string.
+   - **Health Check Path:** `/api/health`
+4. Set Environment Variables:
+   - `MONGODB_URI`: `<Your MongoDB Atlas connection string>` (e.g. `mongodb+srv://.../studentDB?retryWrites=true&w=majority`)
    - `NODE_ENV`: `production`
-   - `FRONTEND_URL`: Your Netlify URL (or `*` initially).
+   - `FRONTEND_URL`: `*` (or your Netlify URL once deployed)
+5. Deploy and copy your Render URL (e.g. `https://student-management-backend.onrender.com`).
 
 ### 2. Frontend on Netlify
-1. Create a **New Site from Git** linked to your repository.
-2. Settings:
+1. Go to [Netlify Dashboard](https://app.netlify.com/) → **Add new site** → **Import an existing project**.
+2. Select GitHub and pick `three-tier-student-management-system`.
+3. Build Settings:
    - **Base directory:** `client`
    - **Build command:** `npm run build`
-   - **Publish directory:** `client/dist` (or `dist`)
-3. Environment Variables:
+   - **Publish directory:** `dist`
+4. Environment Variables:
    - `VITE_API_BASE_URL`: `https://<your-render-app>.onrender.com/api`
+5. Deploy site.
+6. Return to Render and update `FRONTEND_URL` to your Netlify domain (e.g. `https://<your-site>.netlify.app`).
 
-## Verified Deployment URLs
+---
 
-- **GitHub Repository:** *(Configured during step 7)*
-- **Frontend (Netlify):** *(Configured during step 10)*
-- **Backend (Render):** *(Configured during step 8)*
+## Verified Project URLs
+
+- **GitHub Repository:** [https://github.com/co2023smniyazi/three-tier-student-management-system](https://github.com/co2023smniyazi/three-tier-student-management-system)
+- **Frontend (Netlify):** *(Configured in Phase 5)*
+- **Backend (Render):** *(Configured in Phase 4)*
+
+---
 
 ## Troubleshooting
 
 - **Database Disconnected:** Verify your IP address is whitelisted in MongoDB Atlas under Network Access (`0.0.0.0/0` for cloud deployment).
 - **CORS Error:** Ensure `FRONTEND_URL` on Render matches your Netlify domain.
 - **MCP Connection Refused:** Verify backend server is running and `API_BASE_URL` is reachable.
-
