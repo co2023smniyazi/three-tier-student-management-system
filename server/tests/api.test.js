@@ -121,6 +121,13 @@ describe('Backend API & Validation Test Suite', () => {
       });
       assert.equal(res.headers.get('access-control-allow-origin'), 'http://localhost:5173');
     });
+
+    it('CORS headers allow Vercel domains', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { Origin: 'https://student-management.vercel.app' },
+      });
+      assert.equal(res.headers.get('access-control-allow-origin'), 'https://student-management.vercel.app');
+    });
   });
 
   describe('Connection Concurrency Guard', () => {

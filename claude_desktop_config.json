@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "student-management": {
+      "command": "node",
+      "args": [
+        "D:\\New folder\\cc project 1\\mcp-server\\index.js"
+      ],
+      "env": {
+        "API_BASE_URL": "http://localhost:5000/api"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "vercel-platform-mcp-server"
+      ],
+      "env": {
+        "VERCEL_TOKEN": "YOUR_VERCEL_TOKEN"
+      }
+    }
+  }
+}
+

@@ -1,10 +1,14 @@
-// Base API URL normalization:
-// Standardizes on VITE_API_BASE_URL, supporting VITE_API_URL as fallback, defaulting to '/api'.
-// In production on Netlify, '/api' is automatically proxied to the Render backend via netlify.toml.
-// Also ensures the path ends with '/api' whether the host was given with or without '/api'.
-const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api';
-const rawBase = envUrl.trim().replace(/\/+$/, '');
-const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
+// Base API URL configuration:
+// Priority:
+// 1. import.meta.env.VITE_API_BASE_URL (if configured on Vercel or locally)
+// 2. Relative '/api' (proxied via vercel.json rewrite in production or vite.config.js in development)
+// Automatically normalizes trailing slashes and ensures '/api' suffix if missing
+const getApiBase = () => {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || '/api').trim().replace(/\/+$/, '');
+  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+};
+
+const API_BASE = getApiBase();
 
 const handleResponse = async (response) => {
   const contentType = response.headers.get('content-type') || '';

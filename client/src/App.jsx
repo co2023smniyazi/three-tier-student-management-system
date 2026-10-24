@@ -372,7 +372,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>Three-Tier Application Assignment | Frontend: Netlify | Backend: Render | DB: MongoDB Atlas | MCP Protocol Ready</p>
+        <p>Three-Tier Application Assignment | Frontend: Vercel | Backend: Render | DB: MongoDB Atlas | MCP Protocol Ready</p>
       </footer>
     </div>
   );

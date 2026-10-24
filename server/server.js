@@ -38,7 +38,7 @@ const corsOptions = {
       allowedOrigins.includes(origin) ||
       allowedOrigins.includes('*') ||
       process.env.NODE_ENV !== 'production' ||
-      /\.netlify\.app$/.test(origin);
+      /\.vercel\.app$/.test(origin);
 
     if (isAllowed) {
       callback(null, true);

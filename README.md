@@ -8,7 +8,7 @@ A clean, responsive, and robust three-tier student management application built 
 User / Browser
       │
       ▼
-React Frontend (Netlify)
+React Frontend (Vercel)
       │
       │ HTTPS REST API
       ▼
@@ -30,7 +30,7 @@ Accesses shared backend REST API / database service
 - **Database:** MongoDB Atlas (Cloud Database)
 - **MCP Server:** `@modelcontextprotocol/sdk`, Zod
 - **Testing:** Node.js native test runner (`node:test`, `node:assert`)
-- **Deployments:** Netlify (Frontend), Render (Backend)
+- **Deployments:** Vercel (Frontend), Render (Backend)
 - **Repository:** Git + GitHub
 
 ## Features
@@ -67,7 +67,7 @@ Accesses shared backend REST API / database service
 │   ├── tests/           # MCP tool discovery & execution test suite
 │   └── package.json
 ├── render.yaml          # Render Blueprint (Infrastructure-as-Code)
-├── netlify.toml         # Netlify build configuration
+├── vercel.json          # Vercel deployment & rewrite configuration
 ├── package.json         # Workspace root scripts
 └── README.md
 ```
@@ -170,7 +170,7 @@ For local development and pairing with AI assistants (Antigravity, Claude Deskto
 PORT=5000
 NODE_ENV=production
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/studentDB?retryWrites=true&w=majority
-FRONTEND_URL=https://<your-netlify-subdomain>.netlify.app
+FRONTEND_URL=https://<your-vercel-domain>.vercel.app
 ```
 
 ### Frontend (`client/.env`)
@@ -231,33 +231,34 @@ API_BASE_URL=https://<your-render-service>.onrender.com/api
 4. Set Environment Variables:
    - `MONGODB_URI`: `<Your MongoDB Atlas connection string>` (e.g. `mongodb+srv://.../studentDB?retryWrites=true&w=majority`)
    - `NODE_ENV`: `production`
-   - `FRONTEND_URL`: `*` (or your Netlify URL once deployed)
-5. Deploy and copy your Render URL (e.g. `https://student-management-backend.onrender.com`).
+   - `FRONTEND_URL`: `*` (or your Vercel URL once deployed)
+5. Deploy and copy your Render URL: `https://three-tier-student-management-system.onrender.com`.
 
-### 2. Frontend on Netlify
-1. Go to [Netlify Dashboard](https://app.netlify.com/) → **Add new site** → **Import an existing project**.
-2. Select GitHub and pick `three-tier-student-management-system`.
-3. Build Settings:
-   - **Base directory:** `client`
-   - **Build command:** `npm run build`
-   - **Publish directory:** `dist`
-4. Environment Variables:
-   - `VITE_API_BASE_URL`: `https://<your-render-app>.onrender.com/api`
-5. Deploy site.
-6. Return to Render and update `FRONTEND_URL` to your Netlify domain (e.g. `https://<your-site>.netlify.app`).
+### 2. Frontend on Vercel
+1. Go to [Vercel Dashboard](https://vercel.com/) → **Add New...** → **Project**.
+2. Select GitHub and import `three-tier-student-management-system`.
+3. Configure Project Settings:
+   - **Framework Preset:** `Vite`
+   - **Root Directory:** `client` (or keep repository root with root `vercel.json`)
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. Set Environment Variables:
+   - `VITE_API_BASE_URL`: `https://three-tier-student-management-system.onrender.com/api` (Optional: `vercel.json` rewrites automatically proxy `/api/*` to the Render backend).
+5. Click **Deploy**.
+6. (Optional) In Render Dashboard, update `FRONTEND_URL` to your Vercel domain (`https://<your-project>.vercel.app`). The backend automatically permits all `*.vercel.app` origins.
 
 ---
 
 ## Verified Project URLs
 
 - **GitHub Repository:** [https://github.com/co2023smniyazi/three-tier-student-management-system](https://github.com/co2023smniyazi/three-tier-student-management-system)
-- **Frontend (Netlify):** *(Configured in Phase 5)*
-- **Backend (Render):** *(Configured in Phase 4)*
+- **Backend (Render):** [https://three-tier-student-management-system.onrender.com](https://three-tier-student-management-system.onrender.com)
+- **Frontend (Vercel):** Deployed via Vercel integration
 
 ---
 
 ## Troubleshooting
 
-- **Database Disconnected:** Verify your IP address is whitelisted in MongoDB Atlas under Network Access (`0.0.0.0/0` for cloud deployment).
-- **CORS Error:** Ensure `FRONTEND_URL` on Render matches your Netlify domain.
+- **Database Disconnected:** Verify your IP address is whitelisted in MongoDB Atlas under Network Access (`0.0.0.0/0` for cloud deployment without expiration).
+- **CORS Error:** The backend automatically authorizes `*.vercel.app` origins. If using a custom domain, add it to `FRONTEND_URL` on Render.
 - **MCP Connection Refused:** Verify backend server is running and `API_BASE_URL` is reachable.
