@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import mongoose from 'mongoose';
@@ -77,14 +77,15 @@ describe('Backend API & Validation Test Suite', () => {
     });
   });
 
-  describe('REST Endpoints', () => {
-    it('GET /api/health responds with status and database property', async () => {
+  describe('REST Endpoints & Security', () => {
+    it('GET /api/health responds with status, version, uptime, and database property', async () => {
       const res = await fetch(`${baseUrl}/api/health`);
-      // Since MONGODB_URI is not connected yet, it returns 503 unhealthy
       assert.ok([200, 503].includes(res.status), 'Health check returns 200 or 503');
       const data = await res.json();
       assert.ok(data.database !== undefined, 'Health check should report database status');
       assert.ok(data.timestamp !== undefined, 'Health check should include timestamp');
+      assert.equal(data.version, '1.0.0', 'Health check should report semantic version');
+      assert.ok(typeof data.uptime === 'number', 'Health check should report uptime');
       assert.ok(data.hasMongoUri !== undefined, 'Health check should report hasMongoUri boolean');
       assert.ok(data.diagnostic !== undefined, 'Health check should report safe diagnostic info');
     });
@@ -96,7 +97,7 @@ describe('Backend API & Validation Test Suite', () => {
       assert.ok(data.message.includes('Student Management System'));
     });
 
-    it('POST /api/students returns 400 for invalid data', async () => {
+    it('POST /api/students returns 400 for invalid data when unauthenticated (AUTH_ENABLED not true)', async () => {
       const res = await fetch(`${baseUrl}/api/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,6 +128,69 @@ describe('Backend API & Validation Test Suite', () => {
         headers: { Origin: 'https://student-management.vercel.app' },
       });
       assert.equal(res.headers.get('access-control-allow-origin'), 'https://student-management.vercel.app');
+    });
+
+    it('Security headers (Helmet) are set on responses', async () => {
+      const res = await fetch(`${baseUrl}/api/health`);
+      assert.equal(res.headers.get('x-content-type-options'), 'nosniff', 'Must include nosniff header');
+    });
+  });
+
+  describe('Switchable Authentication (AUTH_ENABLED)', () => {
+    afterEach(() => {
+      delete process.env.AUTH_ENABLED;
+      delete process.env.MCP_API_TOKEN;
+    });
+
+    it('enforces 401 Unauthorized on write endpoints when AUTH_ENABLED=true and no token supplied', async () => {
+      process.env.AUTH_ENABLED = 'true';
+      process.env.MCP_API_TOKEN = 'test-token-secret-1234';
+
+      const res = await fetch(`${baseUrl}/api/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Test Student' }),
+      });
+
+      assert.equal(res.status, 401);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.ok(data.message.includes('Unauthorized'));
+    });
+
+    it('enforces 403 Forbidden when AUTH_ENABLED=true and wrong token supplied', async () => {
+      process.env.AUTH_ENABLED = 'true';
+      process.env.MCP_API_TOKEN = 'test-token-secret-1234';
+
+      const res = await fetch(`${baseUrl}/api/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer wrong-token',
+        },
+        body: JSON.stringify({ name: 'Test Student' }),
+      });
+
+      assert.equal(res.status, 403);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.ok(data.message.includes('Forbidden'));
+    });
+
+    it('allows write request through when AUTH_ENABLED=true and valid Bearer token supplied', async () => {
+      process.env.AUTH_ENABLED = 'true';
+      process.env.MCP_API_TOKEN = 'test-token-secret-1234';
+
+      const res = await fetch(`${baseUrl}/api/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token-secret-1234',
+        },
+        body: JSON.stringify({ name: '' }), // Invalid payload triggers 400 validation, proving auth passed!
+      });
+
+      assert.equal(res.status, 400, 'Should pass authentication and reach validation handler');
     });
   });
 

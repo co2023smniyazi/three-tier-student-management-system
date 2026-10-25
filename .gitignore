@@ -18,6 +18,10 @@ build/
 .env.test.local
 .env.production.local
 
+# Always allow example environment templates
+!.env.example
+!**/.env.example
+
 # Logs
 logs/
 *.log
@@ -33,3 +37,6 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Backups
+*.bak

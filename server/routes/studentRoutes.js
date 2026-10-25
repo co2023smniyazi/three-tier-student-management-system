@@ -5,8 +5,10 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  getStudentStats,
 } from '../services/studentService.js';
 import { getDBDiagnostics, connectDB } from '../config/db.js';
+import { requireWriteAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -20,25 +22,64 @@ router.get('/health', (req, res) => {
     connectDB().catch(() => {});
   }
 
+  const mem = process.memoryUsage();
+
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
+    version: '1.0.0',
     database: diag.database,
     hasMongoUri: diag.hasMongoUri,
     diagnostic: diag.diagnostic,
-    uptime: process.uptime(),
+    uptime: Math.round(process.uptime()),
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+    },
+    authEnabled: process.env.AUTH_ENABLED === 'true',
   });
 });
 
-// GET /api/students
-router.get('/students', async (req, res, next) => {
+// GET /api/students/stats (Registered before /students/:id)
+router.get('/students/stats', async (req, res, next) => {
   try {
-    const { search } = req.query;
-    const students = await listStudents(search);
+    const stats = await getStudentStats();
     res.status(200).json({
       success: true,
-      count: students.length,
-      data: students,
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/students (Supports optional search, sorting, and pagination)
+router.get('/students', async (req, res, next) => {
+  try {
+    const { search, page, limit, sortBy, sortOrder } = req.query;
+
+    const result = await listStudents(search, {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    });
+
+    // If paginated response
+    if (result && result.pagination) {
+      return res.status(200).json({
+        success: true,
+        count: result.students.length,
+        pagination: result.pagination,
+        data: result.students,
+      });
+    }
+
+    // Default backward-compatible unpaginated response
+    res.status(200).json({
+      success: true,
+      count: result.length,
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -58,8 +99,8 @@ router.get('/students/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/students
-router.post('/students', async (req, res, next) => {
+// POST /api/students (Protected by requireWriteAuth when AUTH_ENABLED=true)
+router.post('/students', requireWriteAuth, async (req, res, next) => {
   try {
     const newStudent = await createStudent(req.body);
     res.status(201).json({
@@ -72,8 +113,8 @@ router.post('/students', async (req, res, next) => {
   }
 });
 
-// PUT /api/students/:id
-router.put('/students/:id', async (req, res, next) => {
+// PUT /api/students/:id (Protected by requireWriteAuth when AUTH_ENABLED=true)
+router.put('/students/:id', requireWriteAuth, async (req, res, next) => {
   try {
     const updatedStudent = await updateStudent(req.params.id, req.body);
     res.status(200).json({
@@ -86,8 +127,8 @@ router.put('/students/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/students/:id
-router.delete('/students/:id', async (req, res, next) => {
+// DELETE /api/students/:id (Protected by requireWriteAuth when AUTH_ENABLED=true)
+router.delete('/students/:id', requireWriteAuth, async (req, res, next) => {
   try {
     const removedStudent = await deleteStudent(req.params.id);
     res.status(200).json({

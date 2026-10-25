@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "student-management": {
+      "command": "node",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PROJECT>/mcp-server/index.js"
+      ],
+      "env": {
+        "API_BASE_URL": "https://three-tier-student-management-system.onrender.com/api",
+        "MCP_API_TOKEN": "YOUR_OPTIONAL_MCP_API_TOKEN"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "vercel-platform-mcp-server"
+      ],
+      "env": {
+        "VERCEL_TOKEN": "YOUR_VERCEL_TOKEN"
+      }
+    }
+  }
+}
