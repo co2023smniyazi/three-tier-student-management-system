@@ -285,3 +285,4 @@ export const StudentFormModal = ({
     </div>
   );
 };
+

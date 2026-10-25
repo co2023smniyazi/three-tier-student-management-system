@@ -72,3 +72,4 @@ npm run build:client
 3. Keep changes focused and atomic.
 4. Ensure all 25 automated tests pass.
 5. Open a Pull Request detailing the problem solved and testing verified.
+

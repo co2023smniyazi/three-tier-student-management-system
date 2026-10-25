@@ -72,3 +72,4 @@
 > Because both the web frontend and Claude Desktop connect to the identical Render REST API and MongoDB Atlas database, changes made in Claude appear on the web dashboard instantly, and vice versa.
 >
 > Thank you, and I look forward to your questions!"
+

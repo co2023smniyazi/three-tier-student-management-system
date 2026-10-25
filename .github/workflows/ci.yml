@@ -36,3 +36,4 @@ jobs:
 
       - name: Build Frontend Application (Vite)
         run: npm run build:client
+

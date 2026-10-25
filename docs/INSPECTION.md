@@ -157,3 +157,4 @@ An exhaustive audit of Git commit logs (`git log -p -S`) and all tracked files w
 2. Write `docs/REPORT_DRAFT.md` (portfolio report skeleton).
 3. Add `LICENSE` (MIT) and `CONTRIBUTING.md`.
 4. Polish `README.md` with updated architecture diagrams, security notes, API docs, and verified free-tier limitation citations.
+

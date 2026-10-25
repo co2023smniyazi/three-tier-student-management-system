@@ -4,8 +4,9 @@
   "description": "Three-Tier Student Management System with MCP Server",
   "private": true,
   "scripts": {
-    "test": "npm run test --prefix server && npm run test --prefix mcp-server",
+    "test": "npm run test --prefix server && npm run test --prefix client && npm run test --prefix mcp-server",
     "test:server": "npm run test --prefix server",
+    "test:client": "npm run test --prefix client",
     "test:mcp": "npm run test --prefix mcp-server",
     "build:client": "npm run build --prefix client",
     "build": "npm run build --prefix client",

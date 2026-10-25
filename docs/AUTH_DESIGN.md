@@ -116,3 +116,4 @@ These headers are passed to `fetch()` in all mutation operations (`create_studen
 4. [x] Update MCP server to send auth header when configured.
 5. [x] Verify existing test suite runs cleanly with `AUTH_ENABLED=false`.
 6. [x] Add targeted unit test for auth middleware when `AUTH_ENABLED=true`.
+

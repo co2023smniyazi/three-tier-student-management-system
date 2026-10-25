@@ -20,3 +20,4 @@ export const SkeletonMobileCard = () => (
     <div className="skeleton-cell skeleton-sub" />
   </div>
 );
+

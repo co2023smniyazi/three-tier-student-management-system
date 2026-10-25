@@ -133,3 +133,4 @@ Recommended next steps for production expansion:
 1. Enable `AUTH_ENABLED=true` in enterprise environments with role-based access control (RBAC).
 2. Attach a custom domain on Vercel with automatic TLS renewal.
 3. Configure continuous monitoring alerts on Render health check endpoints.
+

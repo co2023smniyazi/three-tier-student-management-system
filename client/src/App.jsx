@@ -2,14 +2,28 @@ import React, { useState, useMemo } from 'react';
 import { useStudents } from './hooks/useStudents';
 import { useTheme } from './hooks/useTheme';
 import { useDebounce } from './hooks/useDebounce';
-import { Header } from './components/Header';
-import { StatsCards } from './components/StatsCards';
-import { SearchBar } from './components/SearchBar';
+import { Navbar } from './components/Navbar';
+import { LeftSidebar } from './components/LeftSidebar';
+import { RightSidebar } from './components/RightSidebar';
+import { StoriesBar } from './components/StoriesBar';
+import { Composer } from './components/Composer';
+import { StudentCard } from './components/StudentCard';
 import { StudentTable } from './components/StudentTable';
 import { StudentFormModal } from './components/StudentFormModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toast } from './components/Toast';
+import { EmptyState } from './components/EmptyState';
+import { SkeletonMobileCard } from './components/Skeleton';
+import { MobileNav } from './components/MobileNav';
 import { Footer } from './components/Footer';
+import {
+  IconGrid,
+  IconList,
+  IconSortAsc,
+  IconSortDesc,
+  IconX,
+  IconFilter,
+} from './components/Icons';
 import { exportStudentsToCSV } from './utils/csvExport';
 import { api } from './api';
 import './App.css';
@@ -17,13 +31,19 @@ import './App.css';
 export default function App() {
   const { theme, toggleTheme } = useTheme();
 
-  // Search & Filter state
+  // Navigation & View Mode state
+  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'directory' | 'departments' | 'analytics'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [showFilterBar, setShowFilterBar] = useState(false);
+
+  // Search, Filter & Sort state
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('createdAt'); // 'createdAt' | 'name' | 'studentId' | 'department'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
 
   // Modal & Form state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -43,7 +63,7 @@ export default function App() {
     setToast({ type, message });
   };
 
-  // Data fetching hook
+  // Data hook
   const {
     students,
     loading,
@@ -55,7 +75,7 @@ export default function App() {
     checkHealth,
   } = useStudents(debouncedSearch);
 
-  // Extract unique departments and semesters for filter dropdowns
+  // Department & semester lists
   const availableDepartments = useMemo(() => {
     const set = new Set();
     students.forEach((s) => {
@@ -80,21 +100,18 @@ export default function App() {
   const processedStudents = useMemo(() => {
     let result = [...students];
 
-    // Filter by department
     if (departmentFilter) {
       result = result.filter(
         (s) => s.department?.toLowerCase() === departmentFilter.toLowerCase()
       );
     }
 
-    // Filter by semester
     if (semesterFilter) {
       result = result.filter(
         (s) => s.semester?.toLowerCase() === semesterFilter.toLowerCase()
       );
     }
 
-    // Sort
     result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -115,33 +132,12 @@ export default function App() {
     setIsRefreshing(true);
     try {
       await Promise.all([refresh(), checkHealth()]);
-      showToast('success', 'Data and health status refreshed.');
+      showToast('success', 'Records & server health refreshed.');
     } catch {
-      showToast('error', 'Failed to refresh data from server.');
+      showToast('error', 'Failed to refresh records from server.');
     } finally {
       setIsRefreshing(false);
     }
-  };
-
-  // Toggle sort order or field
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const handleToggleSortOrder = () => {
-    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-  };
-
-  // Reset filters
-  const handleResetFilters = () => {
-    setSearchInput('');
-    setDepartmentFilter('');
-    setSemesterFilter('');
   };
 
   // Export CSV
@@ -157,19 +153,17 @@ export default function App() {
     }
   };
 
-  // Open add student modal
+  // Open modal handlers
   const handleOpenAdd = () => {
     setEditingStudent(null);
     setIsFormOpen(true);
   };
 
-  // Open edit student modal
   const handleOpenEdit = (student) => {
     setEditingStudent(student);
     setIsFormOpen(true);
   };
 
-  // Close form modal
   const handleCloseForm = () => {
     if (!isSubmitting) {
       setIsFormOpen(false);
@@ -184,10 +178,10 @@ export default function App() {
       if (editingStudent) {
         const idToUpdate = editingStudent._id || editingStudent.studentId;
         await api.updateStudent(idToUpdate, formData);
-        showToast('success', `Student "${formData.name}" updated successfully!`);
+        showToast('success', `Updated details for ${formData.name}.`);
       } else {
         await api.createStudent(formData);
-        showToast('success', `Student "${formData.name}" added successfully!`);
+        showToast('success', `Enrolled ${formData.name} successfully!`);
       }
       setIsFormOpen(false);
       setEditingStudent(null);
@@ -199,20 +193,19 @@ export default function App() {
     }
   };
 
-  // Open delete confirm dialog
+  // Delete student handlers
   const handleOpenDelete = (student) => {
     setStudentToDelete(student);
     setIsConfirmOpen(true);
   };
 
-  // Confirm delete
   const handleConfirmDelete = async () => {
     if (!studentToDelete) return;
     setIsDeleting(true);
     try {
       const idToDelete = studentToDelete._id || studentToDelete.studentId;
       await api.deleteStudent(idToDelete);
-      showToast('success', `Student "${studentToDelete.name}" deleted.`);
+      showToast('success', `Deleted record for ${studentToDelete.name}.`);
       setIsConfirmOpen(false);
       setStudentToDelete(null);
       refresh();
@@ -223,59 +216,291 @@ export default function App() {
     }
   };
 
+  // Tab change handler (sync view mode if needed)
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'directory') {
+      setViewMode('table');
+    } else if (tab === 'feed') {
+      setViewMode('cards');
+    }
+  };
+
+  const hasActiveFilters = Boolean(searchInput || departmentFilter || semesterFilter);
+
   return (
-    <div className="app-layout">
-      <Header
+    <div className="fb-app-wrapper">
+      {/* Top Sticky Navigation */}
+      <Navbar
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         dbStatus={dbStatus}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onAddStudent={handleOpenAdd}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        onAddStudent={handleOpenAdd}
+        onToggleMobileDrawer={() => setIsMobileDrawerOpen((prev) => !prev)}
       />
 
-      <main className="main-content" id="main-content">
-        <StatsCards stats={stats} loading={loading && students.length === 0} />
+      {/* Main 3-Column Social Container */}
+      <div className="fb-layout-container">
+        {/* Mobile Backdrop for drawer */}
+        {isMobileDrawerOpen && (
+          <div
+            className="mobile-drawer-backdrop"
+            onClick={() => setIsMobileDrawerOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
-        <SearchBar
-          search={searchInput}
-          onSearchChange={setSearchInput}
+        {/* Column 1: Left Navigation Sidebar */}
+        <LeftSidebar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
           departmentFilter={departmentFilter}
-          onDepartmentChange={setDepartmentFilter}
-          semesterFilter={semesterFilter}
-          onSemesterChange={setSemesterFilter}
-          sortBy={sortBy}
-          onSortByChange={setSortBy}
-          sortOrder={sortOrder}
-          onToggleSortOrder={handleToggleSortOrder}
+          onDepartmentChange={(dept) => {
+            setDepartmentFilter(dept);
+            setActiveTab('feed');
+          }}
           departments={availableDepartments}
-          semesters={availableSemesters}
-          totalCount={students.length}
-          filteredCount={processedStudents.length}
-          onExportCSV={handleExportCSV}
-          onResetFilters={handleResetFilters}
-        />
-
-        <StudentTable
-          students={processedStudents}
-          loading={loading}
-          isWakingUp={isWakingUp}
-          error={error}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          onEdit={handleOpenEdit}
-          onDelete={handleOpenDelete}
-          onClearFilters={handleResetFilters}
+          deptDistribution={stats?.deptDistribution || {}}
+          totalStudents={students.length}
+          semesterCount={availableSemesters.length}
           onAddStudent={handleOpenAdd}
-          onRetry={handleRefresh}
-          hasActiveFilters={Boolean(searchInput || departmentFilter || semesterFilter)}
+          onExportCSV={handleExportCSV}
+          isOpen={isMobileDrawerOpen}
+          onClose={() => setIsMobileDrawerOpen(false)}
         />
-      </main>
 
+        {/* Column 2: Center Feed Stream */}
+        <main className="fb-center-feed" id="main-feed" role="main">
+          {/* Stories-Style Department Quick Filter Row */}
+          <StoriesBar
+            departments={availableDepartments}
+            deptDistribution={stats?.deptDistribution || {}}
+            totalStudents={students.length}
+            activeDepartment={departmentFilter}
+            onSelectDepartment={setDepartmentFilter}
+          />
+
+          {/* Social Composer Card */}
+          <Composer
+            onAddStudent={handleOpenAdd}
+            onExportCSV={handleExportCSV}
+            onToggleFilters={() => setShowFilterBar((prev) => !prev)}
+            hasActiveFilters={hasActiveFilters}
+          />
+
+          {/* Collapsible Filter & Sort Options Bar */}
+          {showFilterBar && (
+            <div className="fb-filter-bar">
+              <div className="filter-bar-group">
+                <label htmlFor="dept-select">Department:</label>
+                <select
+                  id="dept-select"
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                >
+                  <option value="">All Departments</option>
+                  {availableDepartments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-bar-group">
+                <label htmlFor="sem-select">Semester:</label>
+                <select
+                  id="sem-select"
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                >
+                  <option value="">All Semesters</option>
+                  {availableSemesters.map((s) => (
+                    <option key={s} value={s}>
+                      Semester {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-bar-group">
+                <label htmlFor="sort-select">Sort By:</label>
+                <select
+                  id="sort-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="createdAt">Date Enrolled</option>
+                  <option value="name">Student Name</option>
+                  <option value="studentId">Student ID</option>
+                  <option value="department">Department</option>
+                  <option value="semester">Semester</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="fb-icon-btn"
+                onClick={() => setSortOrder((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {sortOrder === 'asc' ? <IconSortAsc size={16} /> : <IconSortDesc size={16} />}
+              </button>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn-reset-filters"
+                  onClick={() => {
+                    setSearchInput('');
+                    setDepartmentFilter('');
+                    setSemesterFilter('');
+                  }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Feed Controls Header */}
+          <div className="fb-feed-controls">
+            <div className="feed-status-info">
+              <span className="feed-count">
+                Showing <strong>{processedStudents.length}</strong> of <strong>{students.length}</strong> students
+              </span>
+              {departmentFilter && (
+                <span className="active-filter-pill">
+                  {departmentFilter}
+                  <button
+                    type="button"
+                    onClick={() => setDepartmentFilter('')}
+                    aria-label="Remove department filter"
+                  >
+                    <IconX size={12} />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {/* View Toggle: Cards vs Table */}
+            <div className="fb-view-toggle" role="group" aria-label="View format">
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                title="Post Cards View"
+                aria-pressed={viewMode === 'cards'}
+              >
+                <IconGrid size={16} />
+                <span>Cards</span>
+              </button>
+
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Table Directory View"
+                aria-pressed={viewMode === 'table'}
+              >
+                <IconList size={16} />
+                <span>Table</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Feed Stream Content */}
+          {isWakingUp ? (
+            <EmptyState type="cold-start" />
+          ) : error && students.length === 0 ? (
+            <EmptyState type="error" errorMessage={error} onRetry={handleRefresh} />
+          ) : loading && students.length === 0 ? (
+            <div className="fb-cards-feed">
+              <SkeletonMobileCard />
+              <SkeletonMobileCard />
+              <SkeletonMobileCard />
+            </div>
+          ) : processedStudents.length === 0 ? (
+            hasActiveFilters ? (
+              <EmptyState
+                type="search"
+                searchQuery={searchInput || departmentFilter}
+                onClearSearch={() => {
+                  setSearchInput('');
+                  setDepartmentFilter('');
+                  setSemesterFilter('');
+                }}
+              />
+            ) : (
+              <EmptyState type="empty" onAddStudent={handleOpenAdd} />
+            )
+          ) : viewMode === 'cards' ? (
+            <div className="fb-cards-feed">
+              {processedStudents.map((student) => (
+                <StudentCard
+                  key={student._id || student.studentId}
+                  student={student}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleOpenDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <StudentTable
+              students={processedStudents}
+              loading={loading}
+              isWakingUp={isWakingUp}
+              error={error}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(field) => {
+                if (sortBy === field) {
+                  setSortOrder((p) => (p === 'asc' ? 'desc' : 'asc'));
+                } else {
+                  setSortBy(field);
+                  setSortOrder('asc');
+                }
+              }}
+              onEdit={handleOpenEdit}
+              onDelete={handleOpenDelete}
+              onClearFilters={() => {
+                setSearchInput('');
+                setDepartmentFilter('');
+                setSemesterFilter('');
+              }}
+              onAddStudent={handleOpenAdd}
+              onRetry={handleRefresh}
+              hasActiveFilters={hasActiveFilters}
+            />
+          )}
+        </main>
+
+        {/* Column 3: Right Sidebar (Analytics & Recent) */}
+        <RightSidebar
+          stats={stats}
+          recentStudents={students}
+          onEditStudent={handleOpenEdit}
+        />
+      </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onAddStudent={handleOpenAdd}
+        onToggleDrawer={() => setIsMobileDrawerOpen((prev) => !prev)}
+      />
+
+      {/* Honest, Clean Footer */}
       <Footer />
 
-      {/* Modals & Portals */}
+      {/* Modals & Dialogs */}
       <StudentFormModal
         isOpen={isFormOpen}
         isEditing={Boolean(editingStudent)}

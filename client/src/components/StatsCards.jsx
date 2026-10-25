@@ -128,3 +128,4 @@ export const StatsCards = ({ stats, loading }) => {
     </section>
   );
 };
+

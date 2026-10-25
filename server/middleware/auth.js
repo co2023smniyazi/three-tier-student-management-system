@@ -36,3 +36,4 @@ export const requireWriteAuth = (req, res, next) => {
     message: 'Forbidden: Invalid or expired authentication token.',
   });
 };
+
