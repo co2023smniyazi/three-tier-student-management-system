@@ -9,6 +9,7 @@ const initialFormData = {
   department: '',
   semester: '',
   contact: '',
+  emailVerified: false,
 };
 
 export default function App() {
@@ -66,8 +67,8 @@ export default function App() {
 
   // Form input changes
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   // Validate form data
@@ -121,6 +122,7 @@ export default function App() {
       department: student.department,
       semester: student.semester,
       contact: student.contact,
+      emailVerified: Boolean(student.emailVerified),
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -286,6 +288,18 @@ export default function App() {
               />
             </div>
 
+                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '12px 0' }}>
+              <input
+                id="emailVerified"
+                name="emailVerified"
+                type="checkbox"
+                checked={Boolean(formData.emailVerified)}
+                onChange={handleInputChange}
+                style={{ width: 'auto', cursor: 'pointer' }}
+              />
+              <label htmlFor="emailVerified" style={{ margin: 0, cursor: 'pointer' }}>Email Verified</label>
+            </div>
+
             <div className="form-actions">
               <button
                 type="button"
@@ -325,6 +339,7 @@ export default function App() {
                   <th>Student ID</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Status</th>
                   <th>Department</th>
                   <th>Semester</th>
                   <th>Contact</th>
@@ -339,6 +354,11 @@ export default function App() {
                     </td>
                     <td>{student.name}</td>
                     <td>{student.email}</td>
+                    <td>
+                      <span className={`badge ${student.emailVerified ? 'badge-success' : 'badge-secondary'}`}>
+                        {student.emailVerified ? 'Verified' : 'Pending'}
+                      </span>
+                    </td>
                     <td>{student.department}</td>
                     <td>{student.semester}</td>
                     <td>{student.contact}</td>
