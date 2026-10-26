@@ -2,10 +2,18 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure mcp-server/.env is loaded regardless of current working directory
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config();
 
-const getApiBase = () => (process.env.API_BASE_URL || 'http://localhost:5000/api').replace(/\/$/, '');
+const DEFAULT_API_BASE = 'https://three-tier-student-management-system.onrender.com/api';
+const getApiBase = () => (process.env.API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 
 // Create the MCP server instance
 const server = new McpServer({
@@ -18,20 +26,38 @@ async function apiRequest(endpoint, options = {}) {
   const base = getApiBase();
   const url = `${base}${endpoint}`;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    const authHeaders = process.env.MCP_API_TOKEN
+      ? { Authorization: `Bearer ${process.env.MCP_API_TOKEN}` }
+      : {};
+
     const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...(options.headers || {}),
       },
       ...options,
     });
+    clearTimeout(timeoutId);
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error(
+          'Backend service is waking up (Render free tier spin-up in progress). Please retry in 20-30 seconds.'
+        );
+      }
       throw new Error(data.message || `API error (${res.status}): ${res.statusText}`);
     }
     return data;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out after 25 seconds connecting to backend API at ${base}.`);
+    }
     if (err.cause?.code === 'ECONNREFUSED' || err.message.includes('fetch failed')) {
       throw new Error(
         `Could not connect to backend API at ${base}. Make sure the backend server is running or set API_BASE_URL.`

@@ -60,8 +60,8 @@ export const findStudentByIdOrCode = async (identifier) => {
   return await Student.findOne({ studentId: identifier });
 };
 
-// Service: List all students with optional search
-export const listStudents = async (search = '') => {
+// Service: List all students with optional search, sorting, and pagination
+export const listStudents = async (search = '', options = {}) => {
   const filter = {};
   if (search && search.trim()) {
     const searchRegex = new RegExp(search.trim(), 'i');
@@ -71,7 +71,75 @@ export const listStudents = async (search = '') => {
       { department: searchRegex },
     ];
   }
-  return await Student.find(filter).sort({ createdAt: -1 });
+
+  const { sortBy = 'createdAt', sortOrder = 'desc', page, limit } = options;
+  const sortDirection = sortOrder === 'asc' ? 1 : -1;
+  const sortCriteria = { [sortBy]: sortDirection };
+
+  let query = Student.find(filter).sort(sortCriteria);
+
+  if (limit && Number(limit) > 0) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+
+    const [students, total] = await Promise.all([
+      query.exec(),
+      Student.countDocuments(filter),
+    ]);
+
+    return {
+      students,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    };
+  }
+
+  return await query.exec();
+};
+
+// Service: Get aggregate dashboard stats
+export const getStudentStats = async () => {
+  const total = await Student.countDocuments();
+
+  const [deptAggregation, semAggregation, recentStudent] = await Promise.all([
+    Student.aggregate([
+      { $group: { _id: '$department', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]),
+    Student.aggregate([
+      { $group: { _id: '$semester', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    Student.findOne().sort({ createdAt: -1 }),
+  ]);
+
+  return {
+    total,
+    departmentCount: deptAggregation.length,
+    departments: deptAggregation.reduce((acc, curr) => {
+      acc[curr._id || 'Unassigned'] = curr.count;
+      return acc;
+    }, {}),
+    semesters: semAggregation.reduce((acc, curr) => {
+      acc[curr._id || 'Unassigned'] = curr.count;
+      return acc;
+    }, {}),
+    recentStudent: recentStudent
+      ? {
+          studentId: recentStudent.studentId,
+          name: recentStudent.name,
+          department: recentStudent.department,
+          semester: recentStudent.semester,
+          createdAt: recentStudent.createdAt,
+        }
+      : null,
+  };
 };
 
 // Service: Get a single student

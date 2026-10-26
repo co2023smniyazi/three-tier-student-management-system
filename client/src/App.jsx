@@ -1,399 +1,529 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useStudents } from './hooks/useStudents';
+import { useTheme } from './hooks/useTheme';
+import { useDebounce } from './hooks/useDebounce';
+import { Navbar } from './components/Navbar';
+import { LeftSidebar } from './components/LeftSidebar';
+import { RightSidebar } from './components/RightSidebar';
+import { StoriesBar } from './components/StoriesBar';
+import { Composer } from './components/Composer';
+import { StudentCard } from './components/StudentCard';
+import { StudentTable } from './components/StudentTable';
+import { StudentFormModal } from './components/StudentFormModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { Toast } from './components/Toast';
+import { EmptyState } from './components/EmptyState';
+import { SkeletonMobileCard } from './components/Skeleton';
+import { MobileNav } from './components/MobileNav';
+import { Footer } from './components/Footer';
+import {
+  IconGrid,
+  IconList,
+  IconSortAsc,
+  IconSortDesc,
+  IconX,
+  IconFilter,
+} from './components/Icons';
+import { exportStudentsToCSV } from './utils/csvExport';
 import { api } from './api';
 import './App.css';
 
-const initialFormData = {
-  studentId: '',
-  name: '',
-  email: '',
-  department: '',
-  semester: '',
-  contact: '',
-  emailVerified: false,
-};
-
 export default function App() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [formData, setFormData] = useState(initialFormData);
-  const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [dbStatus, setDbStatus] = useState('checking');
+  const { theme, toggleTheme } = useTheme();
 
-  // Show notification banner helper
-  const notify = (type, message) => {
-    setNotification({ type, message });
-    setTimeout(() => {
-      setNotification((curr) => (curr?.message === message ? null : curr));
-    }, 4500);
+  // Navigation & View Mode state
+  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'directory' | 'departments' | 'analytics'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [showFilterBar, setShowFilterBar] = useState(false);
+
+  // Search, Filter & Sort state
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, 300);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt'); // 'createdAt' | 'name' | 'studentId' | 'department'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+
+  // Modal & Form state
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete dialog state
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Notification toast state
+  const [toast, setToast] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
   };
 
-  // Fetch health status
-  const checkHealth = useCallback(async () => {
+  // Data hook
+  const {
+    students,
+    loading,
+    error,
+    dbStatus,
+    isWakingUp,
+    stats,
+    refresh,
+    checkHealth,
+  } = useStudents(debouncedSearch);
+
+  // Department & semester lists
+  const availableDepartments = useMemo(() => {
+    const set = new Set();
+    students.forEach((s) => {
+      if (s.department) set.add(s.department);
+    });
+    return Array.from(set).sort();
+  }, [students]);
+
+  const availableSemesters = useMemo(() => {
+    const set = new Set();
+    students.forEach((s) => {
+      if (s.semester) set.add(s.semester);
+    });
+    return Array.from(set).sort((a, b) => {
+      const numA = parseInt(String(a).match(/\d+/)?.[0] || '0', 10);
+      const numB = parseInt(String(b).match(/\d+/)?.[0] || '0', 10);
+      return numA - numB;
+    });
+  }, [students]);
+
+  // Client-side filtering and sorting
+  const processedStudents = useMemo(() => {
+    let result = [...students];
+
+    if (departmentFilter) {
+      result = result.filter(
+        (s) => s.department?.toLowerCase() === departmentFilter.toLowerCase()
+      );
+    }
+
+    if (semesterFilter) {
+      result = result.filter(
+        (s) => s.semester?.toLowerCase() === semesterFilter.toLowerCase()
+      );
+    }
+
+    result.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [students, departmentFilter, semesterFilter, sortBy, sortOrder]);
+
+  // Refresh handler
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      const data = await api.checkHealth();
-      setDbStatus(data.database || 'connected');
+      await Promise.all([refresh(), checkHealth()]);
+      showToast('success', 'Records & server health refreshed.');
     } catch {
-      setDbStatus('disconnected');
-    }
-  }, []);
-
-  // Fetch students
-  const loadStudents = useCallback(async (query = '') => {
-    setLoading(true);
-    try {
-      const res = await api.getAllStudents(query);
-      setStudents(res.data || []);
-    } catch (err) {
-      notify('error', err.message || 'Failed to load students');
+      showToast('error', 'Failed to refresh records from server.');
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => {
-    checkHealth();
-    loadStudents();
-  }, [checkHealth, loadStudents]);
-
-  // Handle Search input change
-  const handleSearchChange = (e) => {
-    const val = e.target.value;
-    setSearch(val);
-    loadStudents(val);
   };
 
-  // Form input changes
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  // Export CSV
+  const handleExportCSV = () => {
+    const success = exportStudentsToCSV(
+      processedStudents,
+      `campusconnect-students-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    if (success) {
+      showToast('success', `Exported ${processedStudents.length} student records to CSV.`);
+    } else {
+      showToast('error', 'No student records available to export.');
+    }
   };
 
-  // Validate form data
-  const validateForm = () => {
-    if (!formData.studentId.trim()) return 'Student ID is required';
-    if (!formData.name.trim()) return 'Student Name is required';
-    const emailRegex = /^\S+@\S+\.\S+$/;
-    if (!formData.email.trim() || !emailRegex.test(formData.email.trim())) {
-      return 'A valid email address is required';
-    }
-    if (!formData.department.trim()) return 'Department is required';
-    if (!formData.semester.trim()) return 'Semester is required';
-    if (!formData.contact.trim()) return 'Contact number is required';
-    return null;
+  // Open modal handlers
+  const handleOpenAdd = () => {
+    setEditingStudent(null);
+    setIsFormOpen(true);
   };
 
-  // Submit create or edit form
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const validationError = validateForm();
-    if (validationError) {
-      notify('error', validationError);
-      return;
-    }
+  const handleOpenEdit = (student) => {
+    setEditingStudent(student);
+    setIsFormOpen(true);
+  };
 
+  const handleCloseForm = () => {
+    if (!isSubmitting) {
+      setIsFormOpen(false);
+      setEditingStudent(null);
+    }
+  };
+
+  // Submit form (create or edit)
+  const handleFormSubmit = async (formData) => {
+    setIsSubmitting(true);
     try {
-      if (editingId) {
-        await api.updateStudent(editingId, formData);
-        notify('success', 'Student updated successfully!');
+      if (editingStudent) {
+        const idToUpdate = editingStudent._id || editingStudent.studentId;
+        await api.updateStudent(idToUpdate, formData);
+        showToast('success', `Updated details for ${formData.name}.`);
       } else {
         await api.createStudent(formData);
-        notify('success', 'Student added successfully!');
+        showToast('success', `Enrolled ${formData.name} successfully!`);
       }
-
-      setFormData(initialFormData);
-      setEditingId(null);
-      setShowForm(false);
-      loadStudents(search);
+      setIsFormOpen(false);
+      setEditingStudent(null);
+      refresh();
     } catch (err) {
-      notify('error', err.message || 'Operation failed');
+      showToast('error', err.message || 'Operation failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Start editing a student
-  const handleEdit = (student) => {
-    setEditingId(student._id || student.studentId);
-    setFormData({
-      studentId: student.studentId,
-      name: student.name,
-      email: student.email,
-      department: student.department,
-      semester: student.semester,
-      contact: student.contact,
-      emailVerified: Boolean(student.emailVerified),
-    });
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Delete student handlers
+  const handleOpenDelete = (student) => {
+    setStudentToDelete(student);
+    setIsConfirmOpen(true);
   };
 
-  // Cancel edit / add form
-  const handleCancelForm = () => {
-    setEditingId(null);
-    setFormData(initialFormData);
-    setShowForm(false);
-  };
-
-  // Delete student
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete student "${name}"?`)) {
-      return;
-    }
-
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.deleteStudent(id);
-      notify('success', `Student "${name}" deleted successfully!`);
-      loadStudents(search);
+      const idToDelete = studentToDelete._id || studentToDelete.studentId;
+      await api.deleteStudent(idToDelete);
+      showToast('success', `Deleted record for ${studentToDelete.name}.`);
+      setIsConfirmOpen(false);
+      setStudentToDelete(null);
+      refresh();
     } catch (err) {
-      notify('error', err.message || 'Failed to delete student');
+      showToast('error', err.message || 'Failed to delete student.');
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+  // Tab change handler (sync view mode if needed)
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'directory') {
+      setViewMode('table');
+    } else if (tab === 'feed') {
+      setViewMode('cards');
+    }
+  };
+
+  const hasActiveFilters = Boolean(searchInput || departmentFilter || semesterFilter);
 
   return (
-    <div className="container">
-      {/* Header */}
-      <header className="app-header">
-        <div className="header-title">
-          <h1>Student Portal</h1>
-          <p>Three-Tier College Architecture (React + Express + MongoDB Atlas)</p>
-        </div>
-        <div className={`health-badge ${dbStatus === 'connected' ? 'connected' : 'disconnected'}`}>
-          <span className="badge-dot"></span>
-          Database: {dbStatus}
-        </div>
-      </header>
+    <div className="fb-app-wrapper">
+      {/* Top Sticky Navigation */}
+      <Navbar
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        dbStatus={dbStatus}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        onAddStudent={handleOpenAdd}
+        onToggleMobileDrawer={() => setIsMobileDrawerOpen((prev) => !prev)}
+      />
 
-      {/* Notifications */}
-      {notification && (
-        <div className={`notification ${notification.type}`}>
-          <span>{notification.message}</span>
-          <button className="close-btn" onClick={() => setNotification(null)}>
-            &times;
-          </button>
-        </div>
-      )}
-
-      {/* Action / Search Controls */}
-      <div className="controls-bar">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search by ID, name, or department..."
-            value={search}
-            onChange={handleSearchChange}
+      {/* Main 3-Column Social Container */}
+      <div className="fb-layout-container">
+        {/* Mobile Backdrop for drawer */}
+        {isMobileDrawerOpen && (
+          <div
+            className="mobile-drawer-backdrop"
+            onClick={() => setIsMobileDrawerOpen(false)}
+            aria-hidden="true"
           />
-        </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            if (showForm && !editingId) {
-              handleCancelForm();
-            } else {
-              setEditingId(null);
-              setFormData(initialFormData);
-              setShowForm(true);
-            }
+        )}
+
+        {/* Column 1: Left Navigation Sidebar */}
+        <LeftSidebar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          departmentFilter={departmentFilter}
+          onDepartmentChange={(dept) => {
+            setDepartmentFilter(dept);
+            setActiveTab('feed');
           }}
-        >
-          {showForm && !editingId ? 'Close Form' : '+ Add New Student'}
-        </button>
-      </div>
+          departments={availableDepartments}
+          deptDistribution={stats?.deptDistribution || {}}
+          totalStudents={students.length}
+          semesterCount={availableSemesters.length}
+          onAddStudent={handleOpenAdd}
+          onExportCSV={handleExportCSV}
+          isOpen={isMobileDrawerOpen}
+          onClose={() => setIsMobileDrawerOpen(false)}
+        />
 
-      {/* Add / Edit Form */}
-      {showForm && (
-        <div className="form-card">
-          <div className="form-header">
-            <h2>{editingId ? 'Edit Student Details' : 'Add New Student'}</h2>
-            <button className="close-btn" onClick={handleCancelForm}>
-              &times;
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="student-form">
-            <div className="form-group">
-              <label htmlFor="studentId">Student ID *</label>
-              <input
-                id="studentId"
-                name="studentId"
-                type="text"
-                placeholder="e.g. STU1001"
-                value={formData.studentId}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+        {/* Column 2: Center Feed Stream */}
+        <main className="fb-center-feed" id="main-feed" role="main">
+          {/* Stories-Style Department Quick Filter Row */}
+          <StoriesBar
+            departments={availableDepartments}
+            deptDistribution={stats?.deptDistribution || {}}
+            totalStudents={students.length}
+            activeDepartment={departmentFilter}
+            onSelectDepartment={setDepartmentFilter}
+          />
 
-            <div className="form-group">
-              <label htmlFor="name">Full Name *</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="e.g. Jane Doe"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+          {/* Social Composer Card */}
+          <Composer
+            onAddStudent={handleOpenAdd}
+            onExportCSV={handleExportCSV}
+            onToggleFilters={() => setShowFilterBar((prev) => !prev)}
+            hasActiveFilters={hasActiveFilters}
+          />
 
-            <div className="form-group">
-              <label htmlFor="email">Email Address *</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="e.g. jane.doe@example.com"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+          {/* Collapsible Filter & Sort Options Bar */}
+          {showFilterBar && (
+            <div className="fb-filter-bar">
+              <div className="filter-bar-group">
+                <label htmlFor="dept-select">Department:</label>
+                <select
+                  id="dept-select"
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                >
+                  <option value="">All Departments</option>
+                  {availableDepartments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="department">Department *</label>
-              <input
-                id="department"
-                name="department"
-                type="text"
-                placeholder="e.g. Computer Science"
-                value={formData.department}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+              <div className="filter-bar-group">
+                <label htmlFor="sem-select">Semester:</label>
+                <select
+                  id="sem-select"
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                >
+                  <option value="">All Semesters</option>
+                  {availableSemesters.map((s) => (
+                    <option key={s} value={s}>
+                      Semester {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="semester">Semester *</label>
-              <input
-                id="semester"
-                name="semester"
-                type="text"
-                placeholder="e.g. 5 or Semester 5"
-                value={formData.semester}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+              <div className="filter-bar-group">
+                <label htmlFor="sort-select">Sort By:</label>
+                <select
+                  id="sort-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="createdAt">Date Enrolled</option>
+                  <option value="name">Student Name</option>
+                  <option value="studentId">Student ID</option>
+                  <option value="department">Department</option>
+                  <option value="semester">Semester</option>
+                </select>
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="contact">Contact Number *</label>
-              <input
-                id="contact"
-                name="contact"
-                type="text"
-                placeholder="e.g. +1 555-0199"
-                value={formData.contact}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-
-                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '12px 0' }}>
-              <input
-                id="emailVerified"
-                name="emailVerified"
-                type="checkbox"
-                checked={Boolean(formData.emailVerified)}
-                onChange={handleInputChange}
-                style={{ width: 'auto', cursor: 'pointer' }}
-              />
-              <label htmlFor="emailVerified" style={{ margin: 0, cursor: 'pointer' }}>Email Verified</label>
-            </div>
-
-            <div className="form-actions">
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={handleCancelForm}
+                className="fb-icon-btn"
+                onClick={() => setSortOrder((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
               >
-                Cancel
+                {sortOrder === 'asc' ? <IconSortAsc size={16} /> : <IconSortDesc size={16} />}
               </button>
-              <button type="submit" className="btn btn-primary">
-                {editingId ? 'Update Student' : 'Save Student'}
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn-reset-filters"
+                  onClick={() => {
+                    setSearchInput('');
+                    setDepartmentFilter('');
+                    setSemesterFilter('');
+                  }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Feed Controls Header */}
+          <div className="fb-feed-controls">
+            <div className="feed-status-info">
+              <span className="feed-count">
+                Showing <strong>{processedStudents.length}</strong> of <strong>{students.length}</strong> students
+              </span>
+              {departmentFilter && (
+                <span className="active-filter-pill">
+                  {departmentFilter}
+                  <button
+                    type="button"
+                    onClick={() => setDepartmentFilter('')}
+                    aria-label="Remove department filter"
+                  >
+                    <IconX size={12} />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {/* View Toggle: Cards vs Table */}
+            <div className="fb-view-toggle" role="group" aria-label="View format">
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                title="Post Cards View"
+                aria-pressed={viewMode === 'cards'}
+              >
+                <IconGrid size={16} />
+                <span>Cards</span>
+              </button>
+
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Table Directory View"
+                aria-pressed={viewMode === 'table'}
+              >
+                <IconList size={16} />
+                <span>Table</span>
               </button>
             </div>
-          </form>
-        </div>
-      )}
+          </div>
 
-      {/* Student List Table */}
-      <div className="table-card">
-        {loading ? (
-          <div className="loading-state">
-            <p>Loading student records...</p>
-          </div>
-        ) : students.length === 0 ? (
-          <div className="empty-state">
-            <h3>No Students Found</h3>
-            <p>
-              {search
-                ? `No students matching "${search}". Try clearing the search.`
-                : 'No student records in the database yet. Click "+ Add New Student" to add the first one.'}
-            </p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Department</th>
-                  <th>Semester</th>
-                  <th>Contact</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student._id || student.studentId}>
-                    <td>
-                      <strong>{student.studentId}</strong>
-                    </td>
-                    <td>{student.name}</td>
-                    <td>{student.email}</td>
-                    <td>
-                      <span className={`badge ${student.emailVerified ? 'badge-success' : 'badge-secondary'}`}>
-                        {student.emailVerified ? 'Verified' : 'Pending'}
-                      </span>
-                    </td>
-                    <td>{student.department}</td>
-                    <td>{student.semester}</td>
-                    <td>{student.contact}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleEdit(student)}
-                          title="Edit Student"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() =>
-                            handleDelete(student._id || student.studentId, student.name)
-                          }
-                          title="Delete Student"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {/* Feed Stream Content */}
+          {isWakingUp ? (
+            <EmptyState type="cold-start" />
+          ) : error && students.length === 0 ? (
+            <EmptyState type="error" errorMessage={error} onRetry={handleRefresh} />
+          ) : loading && students.length === 0 ? (
+            <div className="fb-cards-feed">
+              <SkeletonMobileCard />
+              <SkeletonMobileCard />
+              <SkeletonMobileCard />
+            </div>
+          ) : processedStudents.length === 0 ? (
+            hasActiveFilters ? (
+              <EmptyState
+                type="search"
+                searchQuery={searchInput || departmentFilter}
+                onClearSearch={() => {
+                  setSearchInput('');
+                  setDepartmentFilter('');
+                  setSemesterFilter('');
+                }}
+              />
+            ) : (
+              <EmptyState type="empty" onAddStudent={handleOpenAdd} />
+            )
+          ) : viewMode === 'cards' ? (
+            <div className="fb-cards-feed">
+              {processedStudents.map((student) => (
+                <StudentCard
+                  key={student._id || student.studentId}
+                  student={student}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleOpenDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <StudentTable
+              students={processedStudents}
+              loading={loading}
+              isWakingUp={isWakingUp}
+              error={error}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(field) => {
+                if (sortBy === field) {
+                  setSortOrder((p) => (p === 'asc' ? 'desc' : 'asc'));
+                } else {
+                  setSortBy(field);
+                  setSortOrder('asc');
+                }
+              }}
+              onEdit={handleOpenEdit}
+              onDelete={handleOpenDelete}
+              onClearFilters={() => {
+                setSearchInput('');
+                setDepartmentFilter('');
+                setSemesterFilter('');
+              }}
+              onAddStudent={handleOpenAdd}
+              onRetry={handleRefresh}
+              hasActiveFilters={hasActiveFilters}
+            />
+          )}
+        </main>
+
+        {/* Column 3: Right Sidebar (Analytics & Recent) */}
+        <RightSidebar
+          stats={stats}
+          recentStudents={students}
+          onEditStudent={handleOpenEdit}
+        />
       </div>
 
-      {/* Footer */}
-      <footer className="footer">
-        <p>Three-Tier Application Assignment | Frontend: Vercel | Backend: Render | DB: MongoDB Atlas | MCP Protocol Ready</p>
-      </footer>
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onAddStudent={handleOpenAdd}
+        onToggleDrawer={() => setIsMobileDrawerOpen((prev) => !prev)}
+      />
+
+      {/* Honest, Clean Footer */}
+      <Footer />
+
+      {/* Modals & Dialogs */}
+      <StudentFormModal
+        isOpen={isFormOpen}
+        isEditing={Boolean(editingStudent)}
+        initialData={editingStudent}
+        onSubmit={handleFormSubmit}
+        onClose={handleCloseForm}
+        isSubmitting={isSubmitting}
+      />
+
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        student={studentToDelete}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isDeleting) {
+            setIsConfirmOpen(false);
+            setStudentToDelete(null);
+          }
+        }}
+        isConfirming={isDeleting}
+      />
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

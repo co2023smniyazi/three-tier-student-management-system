@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +17,27 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Security Headers (Helmet)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// Rate Limiting (120 requests per minute per IP, disabled in test mode)
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again after 60 seconds.',
+  },
+});
+app.use('/api', limiter);
 
 // CORS configuration
 const allowedOrigins = [
@@ -72,6 +95,7 @@ app.get('/', (req, res) => {
     healthCheck: '/api/health',
     endpoints: {
       students: '/api/students',
+      stats: '/api/students/stats',
     },
   });
 });

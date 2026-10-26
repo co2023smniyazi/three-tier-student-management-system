@@ -3,10 +3,11 @@
     "student-management": {
       "command": "node",
       "args": [
-        "D:\\New folder\\cc project 1\\mcp-server\\index.js"
+        "<ABSOLUTE_PATH_TO_PROJECT>/mcp-server/index.js"
       ],
       "env": {
-        "API_BASE_URL": "http://localhost:5000/api"
+        "API_BASE_URL": "https://three-tier-student-management-system.onrender.com/api",
+        "MCP_API_TOKEN": "YOUR_OPTIONAL_MCP_API_TOKEN"
       }
     },
     "github": {

@@ -6,7 +6,7 @@
         "./mcp-server/index.js"
       ],
       "env": {
-        "API_BASE_URL": "http://localhost:5000/api"
+        "API_BASE_URL": "https://three-tier-student-management-system.onrender.com/api"
       },
       "description": "MongoDB & Student Management System operations (create, list, get, update, delete students in MongoDB Atlas)"
     },
