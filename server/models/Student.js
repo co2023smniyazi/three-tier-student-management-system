@@ -36,6 +36,10 @@ const studentSchema = new mongoose.Schema(
       required: [true, 'Contact number is required'],
       trim: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

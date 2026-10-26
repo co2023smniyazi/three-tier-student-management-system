@@ -38,8 +38,7 @@ Thumbs.db
 # Test coverage
 coverage/
 
-# Backups
-*.bak
-
+# Local AI & Config Backups
+claude_desktop_config.json*
 .kilo/
-claude_desktop_config.json
+*.bak

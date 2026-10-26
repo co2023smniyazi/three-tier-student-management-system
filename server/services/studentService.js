@@ -42,6 +42,12 @@ export const validateStudentInput = (data, isUpdate = false) => {
     }
   }
 
+  if (data.emailVerified !== undefined) {
+    if (typeof data.emailVerified !== 'boolean' && data.emailVerified !== 'true' && data.emailVerified !== 'false') {
+      errors.push('emailVerified must be a boolean');
+    }
+  }
+
   return errors;
 };
 
@@ -170,6 +176,7 @@ export const createStudent = async (data) => {
     department: data.department.trim(),
     semester: `${data.semester}`.trim(),
     contact: data.contact.trim(),
+    emailVerified: data.emailVerified !== undefined ? Boolean(data.emailVerified) : false,
   });
 
   return await newStudent.save();
@@ -207,6 +214,7 @@ export const updateStudent = async (identifier, data) => {
   if (data.department !== undefined) student.department = data.department.trim();
   if (data.semester !== undefined) student.semester = `${data.semester}`.trim();
   if (data.contact !== undefined) student.contact = data.contact.trim();
+  if (data.emailVerified !== undefined) student.emailVerified = Boolean(data.emailVerified);
 
   return await student.save();
 };

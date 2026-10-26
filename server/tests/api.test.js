@@ -54,6 +54,32 @@ describe('Backend API & Validation Test Suite', () => {
       assert.ok(errors.some((e) => e.includes('valid email address')));
     });
 
+    it('accepts optional emailVerified boolean', () => {
+      const errors = validateStudentInput({
+        studentId: 'STU102',
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        department: 'Math',
+        semester: '3',
+        contact: '9876543210',
+        emailVerified: true,
+      });
+      assert.equal(errors.length, 0);
+    });
+
+    it('rejects non-boolean emailVerified value', () => {
+      const errors = validateStudentInput({
+        studentId: 'STU103',
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        department: 'Math',
+        semester: '3',
+        contact: '9876543210',
+        emailVerified: 'invalid-boolean',
+      });
+      assert.ok(errors.some((e) => e.includes('emailVerified must be a boolean')));
+    });
+
     it('accepts completely valid student payload', () => {
       const errors = validateStudentInput({
         studentId: 'STU101',
