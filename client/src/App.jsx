@@ -153,7 +153,7 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <div className="header-title">
-          <h1>Student Information Management System</h1>
+          <h1>Student Portal</h1>
           <p>Three-Tier College Architecture (React + Express + MongoDB Atlas)</p>
         </div>
         <div className={`health-badge ${dbStatus === 'connected' ? 'connected' : 'disconnected'}`}>
