@@ -40,3 +40,6 @@ coverage/
 
 # Backups
 *.bak
+
+.kilo/
+claude_desktop_config.json
