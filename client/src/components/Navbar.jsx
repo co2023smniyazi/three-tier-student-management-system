@@ -46,7 +46,7 @@ export const Navbar = ({
           <div className="fb-brand-icon" aria-hidden="true">
             <IconGraduationCap size={22} />
           </div>
-          <span className="fb-brand-name">CampusConnect</span>
+          <span className="fb-brand-name">Student Portal</span>
         </a>
 
         <div className="fb-search-pill" role="search">
@@ -181,7 +181,7 @@ export const Navbar = ({
             <div className="fb-user-dropdown" role="menu">
               <div className="dropdown-header">
                 <strong>Admin Console</strong>
-                <span>CampusConnect Manager</span>
+                <span>Student Portal Manager</span>
               </div>
               <div className="dropdown-divider" />
               <button

@@ -22,7 +22,7 @@ export const Header = ({
           <IconGraduationCap size={28} className="brand-icon" />
         </div>
         <div className="brand-text">
-          <h1 className="brand-title">CampusConnect</h1>
+          <h1 className="brand-title">Student Portal</h1>
           <p className="brand-subtitle">
             Three-Tier Student Management System • React + Express + MongoDB Atlas
           </p>
