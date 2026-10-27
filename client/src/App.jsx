@@ -16,6 +16,7 @@ import { EmptyState } from './components/EmptyState';
 import { SkeletonMobileCard } from './components/Skeleton';
 import { MobileNav } from './components/MobileNav';
 import { Footer } from './components/Footer';
+import { Hero } from './components/Hero';
 import {
   IconGrid,
   IconList,
@@ -277,6 +278,15 @@ export default function App() {
 
         {/* Column 2: Center Feed Stream */}
         <main className="fb-center-feed" id="main-feed" role="main">
+          {/* Welcome Banner */}
+          <Hero
+            totalStudents={students.length}
+            departmentCount={availableDepartments.length}
+            semesterCount={availableSemesters.length}
+            onAddStudent={handleOpenAdd}
+            onExportCSV={handleExportCSV}
+          />
+
           {/* Stories-Style Department Quick Filter Row */}
           <StoriesBar
             departments={availableDepartments}
