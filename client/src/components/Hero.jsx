@@ -22,11 +22,11 @@ export function Hero({
       <span className="hero-blob hero-blob-3" aria-hidden="true" />
 
       <div className="hero-content">
-        <p className="hero-eyebrow">{getGreeting()} 👋</p>
-        <h1 className="hero-title">Welcome to CampusConnect</h1>
+        <p className="hero-eyebrow">{getGreeting()}</p>
+        <h1 className="hero-title">Welcome to Student Portal</h1>
         <p className="hero-subtitle">
-          Your one-stop home for every student on campus. Browse, search and
-          manage records in a snap.
+          Your command center for every student on campus. Search, filter and
+          manage records in seconds.
         </p>
 
         <div className="hero-actions">
