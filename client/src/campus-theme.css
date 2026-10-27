@@ -1,0 +1,476 @@
+/* ==========================================================================
+   CampusConnect • Colorful & Friendly Campus Theme
+   Loaded AFTER App.css / index.css so it re-skins the app via design tokens
+   plus a few targeted overrides. To revert: remove the import in main.jsx.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+:root {
+  --campus-violet: #6c4cf1;
+  --campus-violet-dark: #5636d6;
+  --campus-pink: #ff5fa2;
+  --campus-coral: #ff7a59;
+  --campus-sun: #ffb703;
+  --campus-teal: #12b5a6;
+  --campus-sky: #38bdf8;
+  --campus-gradient: linear-gradient(135deg, #6c4cf1 0%, #ff5fa2 100%);
+  --campus-gradient-warm: linear-gradient(135deg, #ff7a59 0%, #ffb703 100%);
+  --campus-gradient-cool: linear-gradient(135deg, #12b5a6 0%, #38bdf8 100%);
+
+  --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Re-map existing tokens */
+  --fb-bg: #f6f3ff;
+  --fb-surface: #ffffff;
+  --fb-surface-hover: #f1ecff;
+  --fb-surface-active: #e6deff;
+
+  --fb-primary: #6c4cf1;
+  --fb-primary-hover: #5636d6;
+  --fb-primary-active: #4527b8;
+  --fb-primary-light: #efeaff;
+  --fb-primary-border: #d6cbff;
+  --fb-primary-text: #6c4cf1;
+
+  --fb-text-primary: #1f1a3d;
+  --fb-text-secondary: #5d5878;
+  --fb-text-muted: #8a85a3;
+
+  --fb-border: #ddd6f5;
+  --fb-border-light: #ebe6fa;
+  --fb-border-focus: #6c4cf1;
+
+  --fb-success: #12b5a6;
+  --fb-success-light: #dcfbf6;
+  --fb-success-text: #0b6b62;
+
+  --fb-danger: #f0436b;
+  --fb-danger-hover: #d92f58;
+  --fb-danger-light: #ffe6ec;
+  --fb-danger-text: #b0153b;
+
+  --fb-radius-sm: 8px;
+  --fb-radius-md: 12px;
+  --fb-radius-lg: 18px;
+  --fb-radius-xl: 24px;
+
+  --fb-shadow-sm: 0 1px 3px rgba(108, 76, 241, 0.08);
+  --fb-shadow-card: 0 4px 14px rgba(108, 76, 241, 0.08), 0 1px 3px rgba(31, 26, 61, 0.05);
+  --fb-shadow-elevated: 0 10px 28px rgba(108, 76, 241, 0.18);
+  --fb-shadow-modal: 0 20px 50px rgba(54, 34, 140, 0.28), 0 2px 6px rgba(31, 26, 61, 0.1);
+}
+
+[data-theme='dark'] {
+  --fb-bg: #130f26;
+  --fb-surface: #1d1838;
+  --fb-surface-hover: #2a2350;
+  --fb-surface-active: #382f69;
+
+  --fb-primary: #8b73ff;
+  --fb-primary-hover: #a08cff;
+  --fb-primary-active: #6c4cf1;
+  --fb-primary-light: #2b2358;
+  --fb-primary-border: #43388a;
+  --fb-primary-text: #b4a4ff;
+
+  --fb-text-primary: #f1eeff;
+  --fb-text-secondary: #bcb6dc;
+  --fb-text-muted: #8f89b3;
+
+  --fb-border: #3a3266;
+  --fb-border-light: #2c2550;
+  --fb-border-focus: #8b73ff;
+
+  --fb-success-light: #0f3a36;
+  --fb-success-text: #6fe9db;
+  --fb-danger-light: #46182a;
+  --fb-danger-text: #ff9bb3;
+
+  --fb-shadow-card: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --fb-shadow-elevated: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Page background: soft colorful blobs ---------- */
+body {
+  background-image:
+    radial-gradient(circle at 8% 6%, rgba(255, 95, 162, 0.16), transparent 38%),
+    radial-gradient(circle at 92% 12%, rgba(108, 76, 241, 0.16), transparent 40%),
+    radial-gradient(circle at 80% 92%, rgba(18, 181, 166, 0.13), transparent 40%);
+  background-attachment: fixed;
+}
+
+[data-theme='dark'] body {
+  background-image:
+    radial-gradient(circle at 8% 6%, rgba(255, 95, 162, 0.1), transparent 38%),
+    radial-gradient(circle at 92% 12%, rgba(108, 76, 241, 0.18), transparent 40%),
+    radial-gradient(circle at 80% 92%, rgba(18, 181, 166, 0.08), transparent 40%);
+}
+
+/* ---------- Navbar ---------- */
+.fb-navbar {
+  height: 62px;
+  background: color-mix(in srgb, var(--fb-surface) 86%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--fb-border-light);
+  box-shadow: 0 4px 20px rgba(108, 76, 241, 0.08);
+}
+
+.fb-navbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: linear-gradient(90deg, #6c4cf1, #ff5fa2, #ffb703, #12b5a6);
+}
+
+.fb-brand-icon {
+  background: var(--campus-gradient);
+  box-shadow: 0 4px 14px rgba(108, 76, 241, 0.4);
+  transition: transform 0.25s ease;
+}
+
+.fb-brand:hover .fb-brand-icon {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.fb-brand-name {
+  background: var(--campus-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+}
+
+.fb-search-pill {
+  background-color: var(--fb-primary-light);
+  border-color: transparent;
+}
+
+.fb-search-pill:focus-within {
+  box-shadow: 0 0 0 3px rgba(108, 76, 241, 0.22);
+}
+
+.fb-nav-tab {
+  border-radius: var(--fb-radius-md);
+}
+
+.fb-nav-tab.active {
+  background-color: var(--fb-primary-light);
+}
+
+.tab-underline {
+  background: var(--campus-gradient);
+}
+
+.fb-add-btn {
+  background: var(--campus-gradient);
+  box-shadow: 0 6px 16px rgba(108, 76, 241, 0.35);
+  font-weight: 800;
+}
+
+.fb-add-btn:hover {
+  background: var(--campus-gradient);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(255, 95, 162, 0.4);
+}
+
+.fb-round-btn {
+  background-color: var(--fb-primary-light);
+  border-color: transparent;
+  color: var(--fb-primary);
+}
+
+/* ---------- Avatars ---------- */
+.fb-admin-avatar,
+.fb-profile-avatar,
+.composer-avatar {
+  background: var(--campus-gradient);
+}
+
+/* ---------- Left sidebar ---------- */
+.fb-sidebar-profile {
+  border-radius: var(--fb-radius-lg);
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--fb-primary-light), var(--fb-surface));
+}
+
+.sidebar-nav-item {
+  border-radius: var(--fb-radius-md);
+  font-weight: 700;
+}
+
+.sidebar-nav-item.active {
+  background: var(--campus-gradient);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(108, 76, 241, 0.3);
+}
+
+.sidebar-nav-item.active .nav-icon-wrapper {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.sidebar-nav-item.active .nav-badge {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.home-icon { background-color: rgba(108, 76, 241, 0.14); color: #6c4cf1; }
+.students-icon { background-color: rgba(18, 181, 166, 0.16); color: #0e9b8e; }
+.dept-icon { background-color: rgba(255, 95, 162, 0.16); color: #ee3f8b; }
+.sem-icon { background-color: rgba(255, 183, 3, 0.2); color: #d98f00; }
+.add-icon { background-color: rgba(255, 122, 89, 0.18); color: #f2603b; }
+.export-icon { background-color: rgba(56, 189, 248, 0.2); color: #0e8fc7; }
+
+.dept-filter-btn.active {
+  background-color: var(--fb-primary-light);
+  color: var(--fb-primary);
+}
+
+/* ---------- Stories-style department row ---------- */
+.fb-story-card {
+  border-radius: var(--fb-radius-lg);
+  border-color: transparent;
+  box-shadow: var(--fb-shadow-card);
+}
+
+.fb-story-card:hover {
+  transform: translateY(-4px) rotate(-1deg);
+  box-shadow: var(--fb-shadow-elevated);
+}
+
+.fb-story-card.active {
+  box-shadow: 0 0 0 3px var(--campus-pink), var(--fb-shadow-elevated);
+}
+
+.story-ring-wrapper {
+  background: conic-gradient(from 180deg, #6c4cf1, #ff5fa2, #ffb703, #12b5a6, #6c4cf1);
+  padding: 3px;
+}
+
+.all-depts-ring {
+  background: var(--campus-gradient);
+}
+
+/* ---------- Composer & cards ---------- */
+.fb-composer-card,
+.fb-post-card,
+.fb-right-card,
+.fb-filter-bar,
+.table-card,
+.empty-state {
+  border-radius: var(--fb-radius-lg);
+  border-color: var(--fb-border-light);
+}
+
+.fb-composer-card {
+  border-top: 4px solid var(--campus-pink);
+}
+
+.composer-input-fake {
+  background-color: var(--fb-primary-light);
+  border-color: transparent;
+}
+
+.composer-input-fake:hover {
+  background-color: var(--fb-surface-active);
+}
+
+.composer-action-btn .plus-icon { color: var(--campus-violet); }
+.composer-action-btn .export-icon { color: var(--campus-teal); }
+.composer-action-btn .filter-icon { color: var(--campus-coral); }
+
+.fb-post-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fb-post-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--campus-gradient);
+}
+
+.fb-post-card:nth-child(4n + 2)::before { background: var(--campus-gradient-warm); }
+.fb-post-card:nth-child(4n + 3)::before { background: var(--campus-gradient-cool); }
+.fb-post-card:nth-child(4n + 4)::before { background: linear-gradient(135deg, #38bdf8, #6c4cf1); }
+
+.fb-post-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--fb-shadow-elevated);
+}
+
+.post-avatar {
+  box-shadow: 0 6px 14px rgba(108, 76, 241, 0.3);
+  border: 3px solid var(--fb-surface);
+}
+
+.post-author-name {
+  font-weight: 800;
+}
+
+.academic-badge {
+  font-weight: 700;
+}
+
+.dept-badge {
+  background: var(--fb-primary-light);
+  color: var(--fb-primary);
+}
+
+.sem-badge {
+  background: rgba(255, 183, 3, 0.16);
+  color: #a56a00;
+  border-color: rgba(255, 183, 3, 0.35);
+}
+
+[data-theme='dark'] .sem-badge {
+  color: #ffd66b;
+}
+
+.contact-info-grid {
+  background: linear-gradient(135deg, var(--fb-primary-light), transparent);
+  border-radius: var(--fb-radius-md);
+}
+
+.edit-action:hover {
+  background-color: var(--fb-primary-light);
+}
+
+/* ---------- Feed controls & view toggle ---------- */
+.fb-view-toggle {
+  background: var(--fb-primary-light);
+  border-color: transparent;
+}
+
+.view-toggle-btn.active {
+  background: var(--campus-gradient);
+  box-shadow: 0 4px 10px rgba(108, 76, 241, 0.35);
+}
+
+.active-filter-pill {
+  background: var(--campus-gradient);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+/* ---------- Right sidebar ---------- */
+.quick-stat-item {
+  border-radius: var(--fb-radius-md);
+  border-color: transparent;
+}
+
+.quick-stat-item:nth-child(1) { background: rgba(108, 76, 241, 0.1); }
+.quick-stat-item:nth-child(2) { background: rgba(255, 95, 162, 0.1); }
+.quick-stat-item:nth-child(3) { background: rgba(255, 183, 3, 0.14); }
+
+.users-bg { background-color: rgba(108, 76, 241, 0.2); color: #6c4cf1; }
+.dept-bg { background-color: rgba(255, 95, 162, 0.2); color: #ee3f8b; }
+.sem-bg { background-color: rgba(255, 183, 3, 0.26); color: #c78400; }
+
+.quick-stat-value {
+  font-weight: 900;
+}
+
+.mini-chart-track {
+  height: 8px;
+}
+
+.live-indicator {
+  background: var(--fb-success-light);
+  color: var(--fb-success-text);
+}
+
+/* ---------- Modals, forms, buttons ---------- */
+.modal-dialog {
+  border-radius: var(--fb-radius-xl);
+  border-top: 5px solid var(--campus-pink);
+}
+
+.modal-title {
+  font-weight: 900;
+}
+
+.form-field input:focus {
+  box-shadow: 0 0 0 3px rgba(108, 76, 241, 0.22);
+}
+
+.btn-primary {
+  background: var(--campus-gradient);
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(108, 76, 241, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--campus-gradient);
+  filter: brightness(1.06);
+}
+
+/* ---------- Table ---------- */
+.student-table thead th {
+  background: var(--fb-primary-light);
+  color: var(--fb-primary);
+}
+
+.dept-tag {
+  background: var(--fb-primary-light);
+  color: var(--fb-primary);
+}
+
+/* ---------- Mobile ---------- */
+.mobile-fab-btn {
+  background: var(--campus-gradient);
+  box-shadow: 0 8px 20px rgba(108, 76, 241, 0.45);
+}
+
+.fb-mobile-nav {
+  border-top: 3px solid transparent;
+  border-image: linear-gradient(90deg, #6c4cf1, #ff5fa2, #ffb703, #12b5a6) 1;
+}
+
+/* ---------- Footer ---------- */
+.fb-footer {
+  border-top: 1px solid var(--fb-border-light);
+  background: var(--fb-surface);
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6c4cf1, #ff5fa2);
+}
+
+/* ---------- Entrance animation (respects reduced motion) ---------- */
+@keyframes campusRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fb-post-card,
+.fb-composer-card,
+.fb-right-card,
+.fb-story-card {
+  animation: campusRise 0.45s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-post-card,
+  .fb-composer-card,
+  .fb-right-card,
+  .fb-story-card {
+    animation: none;
+  }
+  .fb-post-card:hover,
+  .fb-story-card:hover {
+    transform: none;
+  }
+}
